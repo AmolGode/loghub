@@ -1,0 +1,54 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:15
+    container_name: loghub_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-loghub}
+      POSTGRES_USER: ${POSTGRES_USER:-loghub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loghubpass}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "55432:5432"   # host:container
+
+  redis:
+    image: redis:7
+    container_name: loghub_redis
+    restart: always
+    ports:
+      - "16379:6379"
+
+  minio:
+    image: minio/minio:latest
+    container_name: loghub_minio
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "19000:9000"
+
+  web:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: loghub_web
+    env_file:
+      - ../.env
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    ports:
+      - "18000:8000"
+    volumes:
+      - ../backend:/code
+    command: ["./docker-entrypoint.sh"]
+
+volumes:
+  pgdata:
+  miniodata:
